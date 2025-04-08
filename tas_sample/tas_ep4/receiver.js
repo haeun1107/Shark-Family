@@ -3,8 +3,10 @@
 // const receive = require('./receive');
 // function receive_message_handler(EP4_message_object) { ... }
 // receive.message_handler = receive_message_handler;
+const inspection = require('./abnormal/inspection_list');
 const mqtt = require('mqtt');
 const sensors_info = require('./sensors_info');
+const abnormal_detector = require('./abnormal/abnormal_detector');
 
 const brokerIp = '210.94.199.225';
 const brokerPort = 1919;
@@ -37,6 +39,15 @@ client.on('message', (receivedTopic, message) => {
         // Parse the corrected JSON
         const parsedMessage = JSON.parse(preprocessedMessage);
         
+        // ✅ [1] 이상치 판단
+        const sensor_data = parsedMessage.data; // 예: { nh4, ph, turbi, salt, do, temp }
+        const result = abnormal_detector.is_abnormal(sensor_data);
+
+        // ✅ [2] 이상이면 리스트에 추가
+        if (result.is_abnormal) {
+          inspection.add_inspection_data(receivedTopic, sensor_data);
+        }
+
         // Access specific fields from the parsed JSON
         receiver.message_handler(parsedMessage);
       } catch (error) {
